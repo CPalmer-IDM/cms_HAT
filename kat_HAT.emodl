@@ -1,0 +1,211 @@
+;More complicated HAT model
+
+(import (rnrs) (emodl cmslib))
+
+(start-model "kat_HAT.emodl")
+
+(species SH1 250)  ;Low risk/random participation
+(species E1)
+(species Ia1 2)
+(species Ib1)
+(species R1)
+
+(species SH2)  ;High risk/random participation
+(species E2)
+(species Ia2)
+(species Ib2)
+(species R2)
+
+(species SH3)  ;Low risk/ non-participants
+(species E3)
+(species Ia3)
+(species Ib3)
+(species R3)
+
+(species SH4 250)  ;High risk/ non-participants
+(species E4)
+(species Ia4 3)
+(species Ib4)
+(species R4)
+
+(species SA 500)
+(species EA)
+(species IA)
+
+
+(species SV 1000)
+(species EV1)
+(species EV2)
+(species EV3)
+(species IV)
+(species GV)
+
+(observe SH1 SH1)
+(observe E1  E1)
+(observe Ia1 Ia1)
+(observe Ib1 Ib1)
+(observe R1 R1)
+(observe SH2 SH2)
+(observe E2 E2)
+(observe Ia2 Ia2)
+(observe Ib2 Ib2)
+(observe R2  R2 )
+(observe SH3 SH3)
+(observe E3 E3)
+(observe Ia3 Ia3)
+(observe Ib3 Ib3)
+(observe R3 R3)
+(observe SH4 SH4)
+(observe E4 E4)
+(observe Ia4 Ia4)
+(observe Ib4 Ib4)
+(observe R4 R4)
+(observe SA SA)
+(observe EA EA)
+(observe IA IA)
+(observe SV SV)
+(observe EV1 EV1)
+(observe EV2 EV2)
+(observe EV3 EV3)
+(observe IV IV)
+(observe GV GV)
+
+
+(param muH  0.000054795) ;Human mortality rate
+(param omegaH 0.006) ;Recovery rte
+(param alpha .333)   ;tsetse biting rate
+(param r 5.91) ;increased risk of bite
+(param sigmaH .0833) ;Human incubation rate
+(param phiH .0019) ;Stage 1 to stage 2 progression rate
+(param gammaH .006) ;Treatment rate from stage 2
+(param muA .0014) ;Animal mortality rate
+(param sigmaA .0833) ;Animal incubation rate
+(param sigmaV .034) ;Tsetse incubation rate
+(param muV .03) ;Tsetse death rate
+
+
+(param pv .01) ;Probability of infection per single infective bite *VARIES*
+(param pvcomp .99) ;Complement Probability of infection per single infective bite *VARIES*
+(param epsilon .03) ;Reduced nonteneral susceptibility factor *VARIES*
+(param fA  .042) ;Proportion of blood meals on reservoir animals *VARIES*
+(param pH .01) ;probability of human infection per single infective bite *VARIES*
+(param k1 .191) ; complement Low risk\random participation Participation Rate *VARIES*
+(param k2 0) ; complement High risk\random participation Participation Rate *VARIES*
+(param k3 0) ; complement Low risk\nonparticipation Participation Rate *VARIES*
+(param k4 .7) ; complement How risk\nonparticipation Participation Rate *VARIES*
+(param meff 0.5) ; Effective tsetse density *VARIES*
+
+(func N1 (+ SH1 E1 Ia1 Ib1 R1))  ;Total populations
+(func N2 (+ SH2 E2 Ia2 Ib2 R2))
+(func N3 (+ SH3 E3 Ia3 Ib3 R3))
+(func N4 (+ SH4 E4 Ia4 Ib4 R4))
+(func NA (+ SA EA IA))
+(func NV (+ SV EV1 EV2 EV3 IV GV))
+
+
+(observe prev (/ (+ Ia1 Ia2 Ia3 Ia4 Ib1 Ib2 Ib3 Ib4) (+ N1 N2 N3 N4)))
+
+
+
+(func m (/ (+ SV EV1 EV2 EV3 IV GV) (+ N1 N2 N3 N4))) ;tsetse density
+
+
+(func f1 (/ N1 (+ N1 N2 N3 N4))) ;biting rate functions
+(func f2 (/ (* r N2) (+ N1 N2 N3 N4)))
+(func f3 (/ N3 (+ N1 N2 N3 N4)))
+(func f4 (/ (* r N4) (+ N1 N2 N3 N4)))
+
+
+(func recipN1 (/ 1 N1))
+(func recipN2 0); (/ 1 N2)) ; We have to do this to take care of the removed populations
+(func recipN3 0);(/ 1 N3))
+(func recipN4 (/ 1 N4))
+(func recipNA (/ 1 NA))
+
+(func SVex (+ (* f1 (* recipN1 (+ Ia1 Ib1))) (* f2 (* recipN2 (+ Ia2 Ib2))) (* f3 (* recipN3 (+ Ia3 Ib3))) (* f4 (* recipN4 (+ Ia4 Ib4)))))
+
+(time-event screen 15 365 ((Ia1 (* k1 Ia1)) (Ib1 (* k1 Ib1)) (R1 (+ R1 (* (- 1 k1) (+ Ia1 Ib1))))))
+(time-event screen 15 365 ((Ia2 (* k2 Ia2)) (Ib2 (* k2 Ib2)) (R2 (+ R2 (* (- 1 k2) (+ Ia2 Ib2))))))
+(time-event screen 15 365 ((Ia3 (* k3 Ia3)) (Ib3 (* k3 Ib3)) (R3 (+ R3 (* (- 1 k3) (+ Ia3 Ib3))))))
+(time-event screen 15 365 ((Ia4 (* k4 Ia4)) (Ib4 (* k4 Ib4)) (R4 (+ R4 (* (- 1 k4) (+ Ia4 Ib4))))))
+
+
+(reaction H1birth            ()   (SH1)    (* muH N1))
+(reaction H1waning           (R1) (SH1)    (* omegaH R1))
+(reaction H1infa            (SH1) (E1)    (* alpha (* meff (* f1 (* SH1 (* IV recipN1))))))
+(reaction H1death           (SH1) ()       (* muH SH1))
+(reaction E1death            (E1) ()       (* muH E1))
+(reaction Ia1enter           (E1) (Ia1)    (* sigmaH E1))
+(reaction Ia1death          (Ia1) ()       (* muH Ia1))
+(reaction Ib1enter          (Ia1) (Ib1)    (* phiH Ia1))
+(reaction Ib1death          (Ib1) ()       (* muH Ib1))
+(reaction recover1          (Ib1) (R1)     (* gammaH Ib1))
+(reaction recov1death        (R1) ()       (* muH R1))
+
+
+(reaction H2birth            ()   (SH2)    (* muH N2))
+(reaction H2waning           (R2) (SH2)    (* omegaH R2))
+(reaction H2infa            (SH2) (E2)    (* alpha (* meff (* f2 (* SH2 (* IV recipN2))))))
+(reaction H2death           (SH2) ()       (* muH SH2))
+(reaction E2death            (E2) ()       (* muH E2))
+(reaction Ia2enter           (E2) (Ia2)    (* sigmaH E2))
+(reaction Ia2death          (Ia2) ()       (* muH Ia2))
+(reaction Ib2enter          (Ia2) (Ib2)    (* phiH Ia2))
+(reaction Ib2death          (Ib2) ()       (* muH Ib2))
+(reaction recover2          (Ib2) (R2)     (* gammaH Ib2))
+(reaction recov2death        (R2) ()       (* muH R2))
+
+
+(reaction H3birth            ()   (SH3)    (* muH N3))
+(reaction H3waning           (R3) (SH3)    (* omegaH R3))
+(reaction H3infa            (SH3) (E3)    (* alpha (* meff (* f3 (* SH3 (* IV recipN3))))))
+(reaction H3death           (SH3) ()       (* muH SH3))
+(reaction E3death            (E3) ()       (* muH E3))
+(reaction Ia3enter           (E3) (Ia3)    (* sigmaH E3))
+(reaction Ia3death          (Ia3) ()       (* muH Ia3))
+(reaction Ib3enter          (Ia3) (Ib3)    (* phiH Ia3))
+(reaction Ib3death          (Ib3) ()       (* muH Ib3))
+(reaction recover3          (Ib3) (R3)     (* gammaH Ib3))
+(reaction recov3death        (R3) ()       (* muH R3))
+
+
+(reaction H4birth            ()   (SH4)    (* muH N4))
+(reaction H4waning           (R4) (SH4)    (* omegaH R4))
+(reaction H4infa            (SH4) (E4)    (* alpha (* meff (* f4 (* SH4 (* IV recipN4))))))
+(reaction H4death           (SH4) ()       (* muH SH4))
+(reaction E4death            (E4) ()       (* muH E4))
+(reaction Ia4enter           (E4) (Ia4)    (* sigmaH E4))
+(reaction Ia4death          (Ia4) ()       (* muH Ia4))
+(reaction Ib4enter          (Ia4) (Ib4)    (* phiH Ia4))
+(reaction Ib4death          (Ib4) ()       (* muH Ib4))
+(reaction recover4          (Ib4) (R4)     (* gammaH Ib4))
+(reaction recov4death        (R4) ()       (* muH R4))
+
+;Animal reservoir
+(reaction Abirth           ()    (SA)   (* muA NA))
+(reaction Adeath           (SA)  ()     (* muA SA))
+(reaction Aexpose          (SA)  (EA)   (* alpha (* meff (* fA (* SA (* IV recipNA))))))
+(reaction Aexposedeath     (EA)  ()     (* muA EA))
+(reaction Ainf             (EA)  (IA)   (* sigmaA EA))
+(reaction Ainfdeath        (IA)  ()     (* muA IA))
+
+;Vectors
+(reaction SVbirth          ()    (SV)   (* muV NV))
+(reaction SVdeath          (SV)  ()     (* muV SV))
+(reaction Svexpos          (SV)  (EV1)  (* (* alpha (* pv (+ SVex (* fA (* IA recipNA))))) SV))
+(reaction EV1death         (EV1) ()     (* muV EV1))
+(reaction EV2enter         (EV1) (EV2)  (* 3 (* sigmaV EV1)))
+(reaction EV2death         (EV2) ()     (* muV EV2))
+(reaction EV3enter         (EV2) (EV3)  (* 3 (* sigmaV EV2)))
+(reaction EV3death         (EV3) ()     (* muV EV3))
+(reaction IVenter          (EV3) (IV)   (* 3 (* sigmaV EV3)))
+(reaction IVdeath          (IV)  ()     (* muV IV))
+(reaction SvexposGV        (SV)  (GV)   (* (* alpha (* pvcomp (+ SVex (* fA (* IA recipNA))))) SV))
+(reaction GVdeath          (GV)  ()     (* muV GV))
+(reaction GVexpos          (GV)  (EV1)  (* epsilon (* (* alpha (* pv (+ SVex (* fA (* IA recipNA))))) GV)))
+
+
+
+
+
+(end-model)
